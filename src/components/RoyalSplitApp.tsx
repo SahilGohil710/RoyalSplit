@@ -158,7 +158,7 @@ export default function RoyalSplitApp() {
             </Button>
           </div>
           {people.length > 0 && (
-            <ExpenseForm people={people} onAddExpense={addExpense} />
+            <ExpenseForm people={people} currentExpenses={expenses} onAddExpense={addExpense} />
           )}
         </div>
       </header>
