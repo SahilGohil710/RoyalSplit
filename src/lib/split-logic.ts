@@ -2,20 +2,30 @@ import { Person, Expense, Debt, Balance } from './types';
 
 /**
  * Calculates net balances for all people based on a list of expenses.
+ * Net Balance = Total Paid - Total Share
  */
 export function calculateBalances(people: Person[], expenses: Expense[]): Balance[] {
   const balances: Record<string, number> = {};
   people.forEach(p => balances[p.id] = 0);
 
   expenses.forEach(expense => {
-    // The person who paid gets a credit
+    // The person who paid gets a credit (positive balance)
     balances[expense.paidBy] += expense.amount;
 
-    // People in the split owe money
+    // People in the split owe money (negative share)
     if (expense.splitType === 'equal') {
-      const perPerson = expense.amount / expense.splits.length;
-      expense.splits.forEach(s => {
-        balances[s.personId] -= perPerson;
+      const numParticipants = expense.splits.length;
+      if (numParticipants === 0) return;
+      
+      // Calculate total cents to avoid floating point issues during distribution
+      const totalCents = Math.round(expense.amount * 100);
+      const shareCents = Math.floor(totalCents / numParticipants);
+      const remainderCents = totalCents % numParticipants;
+
+      expense.splits.forEach((s, index) => {
+        // Distribute remainder cents one by one to the first participants
+        const amountCents = shareCents + (index < remainderCents ? 1 : 0);
+        balances[s.personId] -= amountCents / 100;
       });
     } else if (expense.splitType === 'unequal') {
       expense.splits.forEach(s => {
@@ -23,54 +33,73 @@ export function calculateBalances(people: Person[], expenses: Expense[]): Balanc
       });
     } else if (expense.splitType === 'percentage') {
       expense.splits.forEach(s => {
-        balances[s.personId] -= (s.amount / 100) * expense.amount;
+        // Percentages should be accurate to two decimal cents
+        const share = Math.round((s.amount / 100) * expense.amount * 100) / 100;
+        balances[s.personId] -= share;
       });
     }
   });
 
+  // Final rounding to handle any float precision accumulation from multiple expenses
   return Object.entries(balances).map(([personId, netAmount]) => ({
     personId,
-    netAmount: Math.round(netAmount * 100) / 100 // Handle floating point
+    netAmount: Math.round(netAmount * 100) / 100
   }));
 }
 
 /**
  * Simplifies debts to minimize the number of transactions between people.
- * Uses a greedy approach matching largest debtors with largest creditors.
+ * Follows the greedy algorithm matching largest debtors with largest creditors.
  */
 export function simplifyDebts(balances: Balance[]): Debt[] {
-  const debtors = balances
-    .filter(b => b.netAmount < -0.01)
-    .sort((a, b) => a.netAmount - b.netAmount); // Most negative first
-  
+  // Use a small epsilon to handle float precision issues
+  const epsilon = 0.001;
+
+  // Separate participants into Creditors (>0) and Debtors (<0)
+  // Sort creditors descending: largest credit first
   const creditors = balances
-    .filter(b => b.netAmount > 0.01)
-    .sort((a, b) => b.netAmount - a.netAmount); // Most positive first
+    .filter(b => b.netAmount > epsilon)
+    .sort((a, b) => b.netAmount - a.netAmount)
+    .map(b => ({ ...b }));
+
+  // Sort debtors ascending: most negative netAmount first (largest debt)
+  const debtors = balances
+    .filter(b => b.netAmount < -epsilon)
+    .sort((a, b) => a.netAmount - b.netAmount)
+    .map(b => ({ ...b, netAmount: Math.abs(b.netAmount) }));
 
   const debts: Debt[] = [];
 
-  let i = 0; // debtor index
-  let j = 0; // creditor index
+  let creditorIdx = 0;
+  let debtorIdx = 0;
 
-  const dActive = debtors.map(d => ({ ...d, netAmount: Math.abs(d.netAmount) }));
-  const cActive = creditors.map(c => ({ ...c }));
+  // Greedy settlement process
+  while (creditorIdx < creditors.length && debtorIdx < debtors.length) {
+    const creditor = creditors[creditorIdx];
+    const debtor = debtors[debtorIdx];
 
-  while (i < dActive.length && j < cActive.length) {
-    const amount = Math.min(dActive[i].netAmount, cActive[j].netAmount);
+    // Settle the minimum of the two balances
+    const amount = Math.min(creditor.netAmount, debtor.netAmount);
     
-    if (amount > 0.01) {
+    if (amount > 0.009) { // Only record transactions of 1 cent or more
       debts.push({
-        from: dActive[i].personId,
-        to: cActive[j].personId,
+        from: debtor.personId,
+        to: creditor.personId,
         amount: Math.round(amount * 100) / 100
       });
     }
 
-    dActive[i].netAmount -= amount;
-    cActive[j].netAmount -= amount;
+    // Update remaining balances for the greedy loop
+    creditor.netAmount -= amount;
+    debtor.netAmount -= amount;
 
-    if (dActive[i].netAmount < 0.01) i++;
-    if (cActive[j].netAmount < 0.01) j++;
+    // Remove participants whose balance is fully settled
+    if (creditor.netAmount < epsilon) {
+      creditorIdx++;
+    }
+    if (debtor.netAmount < epsilon) {
+      debtorIdx++;
+    }
   }
 
   return debts;
