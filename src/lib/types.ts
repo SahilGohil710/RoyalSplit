@@ -3,6 +3,7 @@ export type SplitType = 'equal' | 'unequal' | 'percentage';
 export interface Person {
   id: string;
   name: string;
+  upiId?: string; // Added for UPI payment integration
 }
 
 export interface ExpenseSplit {

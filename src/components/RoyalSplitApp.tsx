@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Person, Expense, Debt, Balance } from "@/lib/types";
-import { calculateBalances, simplifyDebts, calculateDirectDebts, calculateBalanceHistory, round } from "@/lib/split-logic";
+import { calculateBalances, simplifyDebts, calculateDirectDebts, calculateBalanceHistory } from "@/lib/split-logic";
 import { ExpenseForm } from "./ExpenseForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,11 +22,16 @@ import {
   PieChart as PieChartIcon,
   ChevronDown,
   ChevronUp,
-  Info
+  Share2,
+  Copy,
+  Download,
+  Smartphone,
+  Edit2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import {
   LineChart,
   Line,
@@ -54,6 +59,14 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const CHART_COLORS = [
   "#F7D56E", // Gold
@@ -67,20 +80,33 @@ const CHART_COLORS = [
 ];
 
 export default function RoyalSplitApp() {
+  const { toast } = useToast();
   const [people, setPeople] = useState<Person[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newPersonName, setNewPersonName] = useState("");
   const [isSimplified, setIsSimplified] = useState(true);
   const [expandedExpenses, setExpandedExpenses] = useState<Record<string, boolean>>({});
+  const [groupId, setGroupId] = useState<string>("");
+
+  useEffect(() => {
+    // Generate a unique group ID on first load
+    const id = Math.random().toString(36).substring(2, 9).toUpperCase();
+    setGroupId(id);
+  }, []);
 
   const addPerson = () => {
     if (!newPersonName.trim()) return;
     const newPerson: Person = {
       id: Math.random().toString(36).substr(2, 9),
       name: newPersonName.trim(),
+      upiId: `${newPersonName.trim().toLowerCase().replace(/\s/g, '')}@upi`
     };
     setPeople([...people, newPerson]);
     setNewPersonName("");
+  };
+
+  const updatePersonUpi = (id: string, newUpi: string) => {
+    setPeople(people.map(p => p.id === id ? { ...p, upiId: newUpi } : p));
   };
 
   const removePerson = (id: string) => {
@@ -112,6 +138,9 @@ export default function RoyalSplitApp() {
     return netPositive;
   }, [balances, people]);
 
+  const getPersonName = (id: string) => people.find(p => p.id === id)?.name || "Unknown";
+  const getPersonUpi = (id: string) => people.find(p => p.id === id)?.upiId || "";
+
   const settleDebt = (debt: Debt) => {
     const settlementExpense: Expense = {
       id: `settle-${Date.now()}`,
@@ -125,7 +154,57 @@ export default function RoyalSplitApp() {
     addExpense(settlementExpense);
   };
 
-  const getPersonName = (id: string) => people.find(p => p.id === id)?.name || "Unknown";
+  const copyGroupLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}#group=${groupId}`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link Copied",
+      description: "Invite your friends to this royal group.",
+    });
+  };
+
+  const generateSettlementSummary = () => {
+    if (debts.length === 0) return "The realm is fully settled.";
+    let summary = `RoyalSplit Settlement Summary (Group: ${groupId})\n\n`;
+    debts.forEach(debt => {
+      summary += `${getPersonName(debt.from)} pays ${getPersonName(debt.to)} ₹${debt.amount.toFixed(2)}\n`;
+    });
+    return summary;
+  };
+
+  const copySummary = () => {
+    navigator.clipboard.writeText(generateSettlementSummary());
+    toast({ title: "Summary Copied", description: "Settlement details are in your clipboard." });
+  };
+
+  const shareSettlement = async () => {
+    const text = generateSettlementSummary();
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'RoyalSplit Settlement',
+          text: text,
+        });
+      } catch (err) {
+        console.error("Share failed", err);
+      }
+    } else {
+      copySummary();
+    }
+  };
+
+  const downloadSettlement = () => {
+    const text = generateSettlementSummary();
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `RoyalSplit-Settlement-${groupId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 flex flex-col items-center">
@@ -136,11 +215,18 @@ export default function RoyalSplitApp() {
           </div>
           <div>
             <h1 className="text-3xl md:text-5xl font-headline text-accent leading-none">RoyalSplit</h1>
-            <p className="text-muted-foreground text-[10px] md:text-sm tracking-widest uppercase mt-1">Premium Expense Sovereignty</p>
+            <p className="text-muted-foreground text-[10px] md:text-sm tracking-widest uppercase mt-1">Group ID: {groupId}</p>
           </div>
         </div>
         
         <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={copyGroupLink}
+            className="h-12 md:h-14 px-6 border-accent/20 hover:bg-accent/10 text-accent font-headline flex items-center justify-center gap-2 rounded-xl"
+          >
+            <Share2 className="w-5 h-5" /> Share Group
+          </Button>
           <div className="relative flex-1 md:w-64">
             <Input 
               placeholder="Add Royal Member..." 
@@ -168,7 +254,7 @@ export default function RoyalSplitApp() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left Column: People & Settlements */}
           <div className="lg:col-span-4 flex flex-col gap-8 order-1">
-            {/* Ledger Table - Scrollable on mobile */}
+            {/* Ledger Table */}
             <Card className="shadow-xl border-primary/10 overflow-hidden">
               <CardHeader className="bg-primary/5 pb-4">
                 <CardTitle className="text-lg md:text-xl font-headline flex items-center gap-2">
@@ -181,19 +267,48 @@ export default function RoyalSplitApp() {
                     <TableHeader className="sticky top-0 bg-card z-10 shadow-sm">
                       <TableRow className="border-border/50">
                         <TableHead className="font-headline text-[10px] md:text-xs">Member</TableHead>
-                        <TableHead className="text-right font-headline text-[10px] md:text-xs">Paid</TableHead>
                         <TableHead className="text-right font-headline text-[10px] md:text-xs">Net</TableHead>
+                        <TableHead className="text-right font-headline text-[10px] md:text-xs"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {people.map(person => {
                         const balance = balances.find(b => b.personId === person.id);
                         return (
-                          <TableRow key={person.id} className="border-border/30 hover:bg-primary/5">
-                            <TableCell className="font-medium py-3 text-sm">{person.name}</TableCell>
-                            <TableCell className="text-right py-3 text-xs">₹{balance?.paid.toFixed(0)}</TableCell>
+                          <TableRow key={person.id} className="border-border/30 hover:bg-primary/5 group">
+                            <TableCell className="py-3">
+                              <div>
+                                <p className="font-medium text-sm">{person.name}</p>
+                                <p className="text-[10px] text-muted-foreground">{person.upiId || 'No UPI set'}</p>
+                              </div>
+                            </TableCell>
                             <TableCell className={`text-right py-3 font-bold text-sm ${balance && balance.netAmount >= 0 ? 'text-accent' : 'text-destructive'}`}>
                               ₹{Math.abs(balance?.netAmount || 0).toFixed(0)}
+                            </TableCell>
+                            <TableCell className="text-right py-3">
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="icon" variant="ghost" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Edit2 className="w-3 h-3 text-accent" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                  <DialogHeader>
+                                    <DialogTitle>Update Member Details</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="grid gap-4 py-4">
+                                    <div className="grid gap-2">
+                                      <Label htmlFor="upi">UPI ID for payments</Label>
+                                      <Input 
+                                        id="upi" 
+                                        value={person.upiId || ''} 
+                                        onChange={(e) => updatePersonUpi(person.id, e.target.value)}
+                                        placeholder="username@upi"
+                                      />
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
                             </TableCell>
                           </TableRow>
                         );
@@ -236,30 +351,61 @@ export default function RoyalSplitApp() {
                       <p className="text-sm italic">The realm is fully settled.</p>
                     </div>
                   ) : (
-                    debts.map((debt, idx) => (
-                      <div key={idx} className="flex flex-col gap-2 p-4 rounded-xl bg-primary/5 border border-primary/10">
-                        <div className="flex flex-col gap-1">
-                          <p className="text-sm leading-relaxed">
-                            <span className="font-bold text-foreground">{getPersonName(debt.from)}</span> 
-                            <span className="text-muted-foreground mx-1">owes</span> 
-                            <span className="font-bold text-foreground">{getPersonName(debt.to)}</span>
-                          </p>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="text-xl md:text-2xl font-headline text-accent">₹{debt.amount.toFixed(2)}</span>
-                            <Button 
-                              size="sm" 
-                              variant="secondary"
-                              onClick={() => settleDebt(debt)}
-                              className="text-xs h-9 bg-accent text-accent-foreground hover:bg-accent/80 font-bold px-4"
-                            >
-                              Settle
-                            </Button>
+                    debts.map((debt, idx) => {
+                      const upiId = getPersonUpi(debt.to);
+                      const upiUrl = upiId ? `upi://pay?pa=${upiId}&am=${debt.amount.toFixed(2)}&tn=Settling RoyalSplit` : null;
+
+                      return (
+                        <div key={idx} className="flex flex-col gap-2 p-4 rounded-xl bg-primary/5 border border-primary/10">
+                          <div className="flex flex-col gap-1">
+                            <p className="text-sm leading-relaxed">
+                              <span className="font-bold text-foreground">{getPersonName(debt.from)}</span> 
+                              <span className="text-muted-foreground mx-1">owes</span> 
+                              <span className="font-bold text-foreground">{getPersonName(debt.to)}</span>
+                            </p>
+                            <div className="flex justify-between items-center mt-2">
+                              <span className="text-xl md:text-2xl font-headline text-accent">₹{debt.amount.toFixed(2)}</span>
+                              <div className="flex gap-2">
+                                {upiUrl && (
+                                  <Button 
+                                    size="sm" 
+                                    variant="outline"
+                                    onClick={() => window.open(upiUrl)}
+                                    className="text-[10px] h-9 border-accent/30 text-accent hover:bg-accent/10 font-bold px-3 flex items-center gap-1"
+                                  >
+                                    <Smartphone className="w-3 h-3" /> Pay
+                                  </Button>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  variant="secondary"
+                                  onClick={() => settleDebt(debt)}
+                                  className="text-[10px] h-9 bg-accent text-accent-foreground hover:bg-accent/80 font-bold px-3"
+                                >
+                                  Mark Settled
+                                </Button>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
+
+                {debts.length > 0 && (
+                  <div className="mt-6 flex flex-wrap gap-2 justify-center">
+                    <Button variant="ghost" size="sm" onClick={copySummary} className="text-[10px] gap-1 opacity-60 hover:opacity-100">
+                      <Copy className="w-3 h-3" /> Copy
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={shareSettlement} className="text-[10px] gap-1 opacity-60 hover:opacity-100">
+                      <Share2 className="w-3 h-3" /> Share
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={downloadSettlement} className="text-[10px] gap-1 opacity-60 hover:opacity-100">
+                      <Download className="w-3 h-3" /> Download
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -302,17 +448,9 @@ export default function RoyalSplitApp() {
                                   <span className="text-lg font-headline">{new Date(expense.date).getDate()}</span>
                                 </div>
                                 <div className="flex-1">
-                                  <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-base md:text-lg leading-tight group-hover:text-accent transition-colors">
-                                      {expense.title}
-                                    </h3>
-                                    {isSubset && (
-                                      <Info className="w-3 h-3 text-accent/60" />
-                                    )}
-                                  </div>
-                                  <div className="sm:hidden text-[10px] text-muted-foreground mb-1">
-                                    {new Date(expense.date).toLocaleDateString()}
-                                  </div>
+                                  <h3 className="font-bold text-base md:text-lg leading-tight group-hover:text-accent transition-colors">
+                                    {expense.title}
+                                  </h3>
                                   <p className="text-xs text-muted-foreground mt-1">
                                     Paid by <span className="text-foreground font-medium">{getPersonName(expense.paidBy)}</span>
                                   </p>
@@ -381,10 +519,6 @@ export default function RoyalSplitApp() {
                                           </Badge>
                                         ))}
                                       </div>
-                                      <div className="text-muted-foreground text-[10px] md:text-xs space-y-1 mt-4">
-                                        <p><span className="font-bold text-foreground">Method:</span> {expense.splitType.charAt(0).toUpperCase() + expense.splitType.slice(1)}</p>
-                                        <p><span className="font-bold text-foreground">Time:</span> {new Date(expense.date).toLocaleString()}</p>
-                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -401,7 +535,7 @@ export default function RoyalSplitApp() {
           </div>
         </div>
 
-        {/* Charts Section - Reordered to bottom on mobile */}
+        {/* Charts Section */}
         {expenses.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 order-3">
             <Card className="border-primary/10 shadow-xl overflow-hidden">
@@ -485,7 +619,7 @@ export default function RoyalSplitApp() {
 
       <footer className="mt-12 md:mt-20 py-8 text-center text-muted-foreground/40 text-[10px] md:text-sm w-full max-w-6xl px-4">
         <Separator className="mb-6 opacity-10" />
-        <p>&copy; {new Date().getFullYear()} RoyalSplit &bull; Premium Expense Sovereignty &bull; Accurate Greedy Settlement</p>
+        <p>&copy; 2026 RoyalSplit &bull; Premium Expense Sovereignty &bull; Accurate Greedy Settlement</p>
       </footer>
     </div>
   );
