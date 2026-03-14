@@ -115,33 +115,33 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-headline flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Transaction
+        <Button className="w-full sm:w-auto h-12 md:h-14 px-6 bg-primary hover:bg-primary/80 text-primary-foreground font-headline flex items-center justify-center gap-2 rounded-xl">
+          <Plus className="w-5 h-5" /> Add Transaction
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] border-primary/20 bg-card max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[700px] border-primary/20 bg-card max-h-[90vh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-headline text-accent flex items-center gap-2">
-            <Crown className="w-6 h-6" /> Royal Entry
+          <DialogTitle className="text-xl sm:text-2xl font-headline text-accent flex items-center gap-2">
+            <Crown className="w-5 h-5 sm:w-6 sm:h-6" /> Royal Entry
           </DialogTitle>
         </DialogHeader>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 pt-4">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title" className="text-muted-foreground">Description</Label>
+            <div className="space-y-1">
+              <Label htmlFor="title" className="text-xs text-muted-foreground">Description</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ex: Dinner, Palace Rent..."
-                className="bg-background border-border focus:ring-accent"
+                className="bg-background border-border h-11 text-base"
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="amount" className="text-muted-foreground">Amount (₹)</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
                 <Input
                   id="amount"
                   type="number"
@@ -149,14 +149,14 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="bg-background border-border"
+                  className="bg-background border-border h-11 text-base"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-muted-foreground">Paid By</Label>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Paid By</Label>
                 <Select value={paidBy} onValueChange={setPaidBy}>
-                  <SelectTrigger className="bg-background border-border">
+                  <SelectTrigger className="bg-background border-border h-11">
                     <SelectValue placeholder="Select payer" />
                   </SelectTrigger>
                   <SelectContent>
@@ -170,10 +170,10 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-muted-foreground">Split Method</Label>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Split Method</Label>
               <Select value={splitType} onValueChange={(v) => setSplitType(v as SplitType)}>
-                <SelectTrigger className="bg-background border-border">
+                <SelectTrigger className="bg-background border-border h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -184,7 +184,7 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
               </Select>
             </div>
 
-            <div className="max-h-[150px] overflow-y-auto space-y-3 pr-2 custom-scrollbar border border-border/50 rounded-md p-3">
+            <div className="max-h-[150px] overflow-y-auto space-y-3 pr-2 custom-scrollbar border border-border/50 rounded-xl p-3 bg-primary/5">
               {people.map((p) => (
                 <div key={p.id} className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
@@ -192,8 +192,9 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
                       id={`check-${p.id}`}
                       checked={splits.find(s => s.personId === p.id)?.amount !== 0}
                       onCheckedChange={() => toggleEqualParticipant(p.id)}
+                      className="h-5 w-5"
                     />
-                    <Label htmlFor={`check-${p.id}`} className="text-sm cursor-pointer">{p.name}</Label>
+                    <Label htmlFor={`check-${p.id}`} className="text-sm cursor-pointer py-1">{p.name}</Label>
                   </div>
                   {splitType !== "equal" && (
                     <div className="relative w-24">
@@ -203,10 +204,10 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
                         placeholder={splitType === "percentage" ? "%" : "₹"}
                         value={splits.find(s => s.personId === p.id)?.amount || ""}
                         onChange={(e) => updateSplitAmount(p.id, e.target.value)}
-                        className="h-8 text-right pr-6"
+                        className="h-9 text-right pr-6"
                         disabled={splits.find(s => s.personId === p.id)?.amount === 0}
                       />
-                      <span className="absolute right-2 top-1.5 text-xs text-muted-foreground pointer-events-none">
+                      <span className="absolute right-2 top-2 text-[10px] text-muted-foreground pointer-events-none">
                         {splitType === "percentage" ? "%" : "₹"}
                       </span>
                     </div>
@@ -216,59 +217,38 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
             </div>
 
             <DialogFooter className="pt-4">
-              <Button type="submit" disabled={!currentSimulatedExpense} className="w-full bg-accent hover:bg-accent/80 text-accent-foreground font-bold">
+              <Button type="submit" disabled={!currentSimulatedExpense} className="w-full h-12 bg-accent hover:bg-accent/80 text-accent-foreground font-bold text-base rounded-xl">
                 Confirm Transaction
               </Button>
             </DialogFooter>
           </form>
 
-          <div className="bg-primary/5 rounded-2xl p-6 border border-primary/10 flex flex-col h-full">
+          <div className="bg-primary/5 rounded-2xl p-4 sm:p-6 border border-primary/10 flex flex-col h-full min-h-[250px]">
             <h3 className="font-headline text-lg text-accent flex items-center gap-2 mb-4">
               <Calculator className="w-5 h-5" /> Settlement Simulation
             </h3>
             
-            <div className="space-y-6 flex-1">
-              <div>
-                <Label className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2 block">Current State</Label>
-                <div className="space-y-2">
-                  {simulation.currentDebts.length === 0 ? (
-                    <p className="text-xs italic text-muted-foreground/60">Fully settled</p>
-                  ) : (
-                    simulation.currentDebts.slice(0, 3).map((debt, i) => (
-                      <div key={i} className="text-xs flex justify-between items-center bg-background/40 p-2 rounded">
-                        <span>{getPersonName(debt.from)} <ArrowRight className="inline w-3 h-3 mx-1 opacity-50" /> {getPersonName(debt.to)}</span>
-                        <span className="font-bold">₹{debt.amount.toFixed(0)}</span>
-                      </div>
-                    ))
-                  )}
-                  {simulation.currentDebts.length > 3 && (
-                    <p className="text-[10px] text-muted-foreground text-center">+{simulation.currentDebts.length - 3} more...</p>
-                  )}
-                </div>
-              </div>
-
-              <Separator className="opacity-10" />
-
+            <div className="space-y-4 flex-1 overflow-y-auto custom-scrollbar pr-1">
               <div className="relative">
-                <Label className="text-[10px] uppercase tracking-widest text-accent mb-2 block">Simulated Outcome</Label>
+                <Label className="text-[10px] uppercase tracking-widest text-accent mb-2 block font-bold">Projected Outcome</Label>
                 {!currentSimulatedExpense ? (
-                  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground/40 border-2 border-dashed border-border/20 rounded-xl">
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/40 border-2 border-dashed border-border/20 rounded-xl">
                     <Info className="w-8 h-8 mb-2" />
-                    <p className="text-xs text-center px-4">Enter details to see how debts will shift</p>
+                    <p className="text-xs text-center px-4">Fill transaction details to see simulation</p>
                   </div>
                 ) : (
                   <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     {simulation.simulatedDebts.length === 0 ? (
-                      <div className="text-center py-4 bg-accent/10 border border-accent/20 rounded-xl">
+                      <div className="text-center py-6 bg-accent/10 border border-accent/20 rounded-xl">
                         <p className="text-sm font-bold text-accent italic">This expense settles all debts!</p>
                       </div>
                     ) : (
                       simulation.simulatedDebts.map((debt, i) => {
                         const isNewOrChanged = !simulation.currentDebts.some(cd => 
-                          cd.from === debt.from && cd.to === debt.to && Math.abs(cd.amount - debt.amount) < 1
+                          cd.from === debt.from && cd.to === debt.to && Math.abs(cd.amount - debt.amount) < 0.01
                         );
                         return (
-                          <div key={i} className={`text-xs flex justify-between items-center p-2 rounded border transition-colors ${isNewOrChanged ? 'bg-accent/10 border-accent/30' : 'bg-background/40 border-transparent'}`}>
+                          <div key={i} className={`text-[11px] sm:text-xs flex justify-between items-center p-2 rounded-lg border transition-colors ${isNewOrChanged ? 'bg-accent/10 border-accent/30' : 'bg-background/40 border-transparent'}`}>
                             <span className={isNewOrChanged ? 'font-bold' : ''}>
                               {getPersonName(debt.from)} <ArrowRight className="inline w-3 h-3 mx-1 opacity-50" /> {getPersonName(debt.to)}
                             </span>
@@ -282,8 +262,8 @@ export function ExpenseForm({ people, currentExpenses, onAddExpense }: ExpenseFo
               </div>
             </div>
             
-            <p className="text-[10px] text-muted-foreground mt-6 italic">
-              * Simulation calculates group-wide minimal transactions using Splitwise-logic.
+            <p className="text-[10px] text-muted-foreground mt-4 italic text-center">
+              Simulation calculates minimal transactions.
             </p>
           </div>
         </div>
