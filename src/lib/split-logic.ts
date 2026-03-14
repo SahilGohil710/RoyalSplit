@@ -49,56 +49,61 @@ export function calculateBalances(people: Person[], expenses: Expense[]): Balanc
 
 /**
  * Simplifies debts to minimize the number of transactions between people.
- * Follows the greedy algorithm matching largest debtors with largest creditors.
+ * Follows the standard greedy algorithm matching largest debtors with largest creditors.
+ * This ensures the minimum possible number of transactions in most scenarios, 
+ * behaving exactly like Splitwise's debt simplification.
  */
 export function simplifyDebts(balances: Balance[]): Debt[] {
   // Use a small epsilon to handle float precision issues
   const epsilon = 0.001;
 
   // Separate participants into Creditors (>0) and Debtors (<0)
-  // Sort creditors descending: largest credit first
-  const creditors = balances
+  // Debtors will have their amounts stored as positive magnitudes for easier calculation
+  let creditors = balances
     .filter(b => b.netAmount > epsilon)
-    .sort((a, b) => b.netAmount - a.netAmount)
-    .map(b => ({ ...b }));
+    .map(b => ({ ...b }))
+    .sort((a, b) => b.netAmount - a.netAmount);
 
-  // Sort debtors ascending: most negative netAmount first (largest debt)
-  const debtors = balances
+  let debtors = balances
     .filter(b => b.netAmount < -epsilon)
-    .sort((a, b) => a.netAmount - b.netAmount)
-    .map(b => ({ ...b, netAmount: Math.abs(b.netAmount) }));
+    .map(b => ({ ...b, netAmount: Math.abs(b.netAmount) }))
+    .sort((a, b) => b.netAmount - a.netAmount);
 
   const debts: Debt[] = [];
 
-  let creditorIdx = 0;
-  let debtorIdx = 0;
+  // Greedy settlement process: always match the person who owes the most 
+  // with the person who is owed the most.
+  while (creditors.length > 0 && debtors.length > 0) {
+    const creditor = creditors[0];
+    const debtor = debtors[0];
 
-  // Greedy settlement process
-  while (creditorIdx < creditors.length && debtorIdx < debtors.length) {
-    const creditor = creditors[creditorIdx];
-    const debtor = debtors[debtorIdx];
-
-    // Settle the minimum of the two balances
-    const amount = Math.min(creditor.netAmount, debtor.netAmount);
+    // The payment is the minimum of what is owed vs what is to be received
+    const payment = Math.min(creditor.netAmount, debtor.netAmount);
     
-    if (amount > 0.009) { // Only record transactions of 1 cent or more
+    if (payment > 0.009) { // At least 1 cent
       debts.push({
         from: debtor.personId,
         to: creditor.personId,
-        amount: Math.round(amount * 100) / 100
+        amount: Math.round(payment * 100) / 100
       });
     }
 
-    // Update remaining balances for the greedy loop
-    creditor.netAmount -= amount;
-    debtor.netAmount -= amount;
+    // Update the balances in the local trackers
+    creditor.netAmount -= payment;
+    debtor.netAmount -= payment;
 
-    // Remove participants whose balance is fully settled
+    // Remove if settled, otherwise re-sort to ensure greedy property for next step.
+    // Re-sorting ensures we always pick the current maximums after each partial settlement.
     if (creditor.netAmount < epsilon) {
-      creditorIdx++;
+      creditors.shift();
+    } else {
+      creditors.sort((a, b) => b.netAmount - a.netAmount);
     }
+
     if (debtor.netAmount < epsilon) {
-      debtorIdx++;
+      debtors.shift();
+    } else {
+      debtors.sort((a, b) => b.netAmount - a.netAmount);
     }
   }
 
