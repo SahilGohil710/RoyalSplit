@@ -38,7 +38,6 @@ export default function RoyalSplitApp() {
 
   const removePerson = (id: string) => {
     setPeople(people.filter((p) => p.id !== id));
-    // Also remove expenses involving this person
     setExpenses(expenses.filter(e => e.paidBy !== id && !e.splits.some(s => s.personId === id)));
   };
 
@@ -54,10 +53,9 @@ export default function RoyalSplitApp() {
   const debts = useMemo(() => simplifyDebts(balances), [balances]);
 
   const settleDebt = (debt: Debt) => {
-    // To settle, we create a pseudo-expense that reverses the debt
     const settlementExpense: Expense = {
       id: `settle-${Date.now()}`,
-      title: `Settlement: ${people.find(p => p.id === debt.from)?.name} to ${people.find(p => p.id === debt.to)?.name}`,
+      title: `Settlement: ${getPersonName(debt.from)} to ${getPersonName(debt.to)}`,
       amount: debt.amount,
       paidBy: debt.from,
       splitType: 'unequal',
@@ -71,7 +69,6 @@ export default function RoyalSplitApp() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 flex flex-col items-center">
-      {/* Header */}
       <header className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20 border border-accent/20">
@@ -79,7 +76,7 @@ export default function RoyalSplitApp() {
           </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-headline text-accent">RoyalSplit</h1>
-            <p className="text-muted-foreground text-sm tracking-widest uppercase">The Sovereign of Shared Ledger</p>
+            <p className="text-muted-foreground text-sm tracking-widest uppercase">Simplified Debt Sovereignty</p>
           </div>
         </div>
         
@@ -108,8 +105,6 @@ export default function RoyalSplitApp() {
       </header>
 
       <main className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
-        {/* Left Column: People & Summary */}
         <div className="lg:col-span-4 space-y-8">
           <Card className="shadow-xl border-primary/10 overflow-hidden">
             <CardHeader className="bg-primary/5 pb-4">
@@ -132,7 +127,7 @@ export default function RoyalSplitApp() {
                           <div className="flex flex-col">
                             <span className="font-bold">{person.name}</span>
                             <span className={`text-sm ${balance >= 0 ? 'text-accent' : 'text-destructive'}`}>
-                              {balance >= 0 ? `Is owed $${balance.toFixed(2)}` : `Owes $${Math.abs(balance).toFixed(2)}`}
+                              {balance >= 0 ? `Is owed ₹${balance.toFixed(2)}` : `Owes ₹${Math.abs(balance).toFixed(2)}`}
                             </span>
                           </div>
                           <Button 
@@ -155,7 +150,7 @@ export default function RoyalSplitApp() {
           <Card className="shadow-xl border-accent/10">
             <CardHeader className="pb-2">
               <CardTitle className="text-xl font-headline flex items-center gap-2">
-                <ArrowRightLeft className="w-5 h-5 text-accent" /> Debt Settlement
+                <ArrowRightLeft className="w-5 h-5 text-accent" /> Debt Settlements
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -168,21 +163,21 @@ export default function RoyalSplitApp() {
                 ) : (
                   debts.map((debt, idx) => (
                     <div key={idx} className="flex flex-col gap-2 p-4 rounded-xl bg-primary/5 border border-primary/10">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{getPersonName(debt.from)}</span>
-                        <Badge variant="outline" className="text-accent border-accent/20">Owes</Badge>
-                        <span className="text-sm font-medium">{getPersonName(debt.to)}</span>
-                      </div>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-2xl font-headline text-accent">${debt.amount.toFixed(2)}</span>
-                        <Button 
-                          size="sm" 
-                          variant="secondary"
-                          onClick={() => settleDebt(debt)}
-                          className="text-xs bg-accent text-accent-foreground hover:bg-accent/80"
-                        >
-                          Settle Up
-                        </Button>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-sm">
+                          <span className="font-bold">{getPersonName(debt.from)}</span> owes <span className="font-bold">{getPersonName(debt.to)}</span>
+                        </p>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-2xl font-headline text-accent">₹{debt.amount.toFixed(2)}</span>
+                          <Button 
+                            size="sm" 
+                            variant="secondary"
+                            onClick={() => settleDebt(debt)}
+                            className="text-xs bg-accent text-accent-foreground hover:bg-accent/80"
+                          >
+                            Settle Now
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))
@@ -192,7 +187,6 @@ export default function RoyalSplitApp() {
           </Card>
         </div>
 
-        {/* Right Column: History */}
         <div className="lg:col-span-8">
           <Card className="h-full shadow-2xl border-primary/10">
             <CardHeader className="border-b border-border/50 bg-primary/5">
@@ -226,7 +220,7 @@ export default function RoyalSplitApp() {
 
                         <div className="flex items-center gap-6 w-full sm:w-auto justify-between sm:justify-end">
                           <div className="text-right">
-                            <p className="text-2xl font-headline text-accent">${expense.amount.toFixed(2)}</p>
+                            <p className="text-2xl font-headline text-accent">₹{expense.amount.toFixed(2)}</p>
                             <p className="text-[10px] uppercase tracking-tighter text-muted-foreground">{expense.splitType} split</p>
                           </div>
                           <Button 
@@ -248,10 +242,9 @@ export default function RoyalSplitApp() {
         </div>
       </main>
 
-      {/* Footer Info */}
       <footer className="mt-20 py-8 text-center text-muted-foreground/40 text-sm">
         <Separator className="mb-6 opacity-10" />
-        <p>&copy; {new Date().getFullYear()} RoyalSplit Ledger &bull; No persistence &bull; Privacy by Design</p>
+        <p>&copy; {new Date().getFullYear()} RoyalSplit Ledger &bull; Simplified Debt Enabled &bull; No Persistence</p>
       </footer>
     </div>
   );

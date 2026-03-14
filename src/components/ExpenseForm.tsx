@@ -36,7 +36,6 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
   const [splitType, setSplitType] = useState<SplitType>("equal");
   const [splits, setSplits] = useState<ExpenseSplit[]>([]);
 
-  // Initialize splits when people or dialog changes
   useEffect(() => {
     if (open) {
       setSplits(people.map((p) => ({ personId: p.id, amount: 0 })));
@@ -52,9 +51,8 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
     let finalSplits = splits;
     if (splitType === "equal") {
       const selectedPeople = splits.filter((s) => s.amount > 0).map(s => s.personId);
-      // If none selected, assume all
       const participants = selectedPeople.length > 0 ? selectedPeople : people.map(p => p.id);
-      finalSplits = participants.map(id => ({ personId: id, amount: 1 })); // Value doesn't matter for logic calculation of 'equal' but count does
+      finalSplits = participants.map(id => ({ personId: id, amount: 1 }));
     }
 
     const newExpense: Expense = {
@@ -121,7 +119,7 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount" className="text-muted-foreground">Amount</Label>
+              <Label htmlFor="amount" className="text-muted-foreground">Amount (₹)</Label>
               <Input
                 id="amount"
                 type="number"
@@ -158,8 +156,8 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="equal">Split Equally</SelectItem>
-                <SelectItem value="unequal">Exact Amounts</SelectItem>
-                <SelectItem value="percentage">Percentages</SelectItem>
+                <SelectItem value="unequal">Exact Amounts (₹)</SelectItem>
+                <SelectItem value="percentage">Percentages (%)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -182,13 +180,13 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
                     <Input
                       type="number"
                       step="0.01"
-                      placeholder={splitType === "percentage" ? "%" : "$"}
+                      placeholder={splitType === "percentage" ? "%" : "₹"}
                       value={splits.find(s => s.personId === p.id)?.amount || ""}
                       onChange={(e) => updateSplitAmount(p.id, e.target.value)}
                       className="h-8 text-right pr-6"
                     />
                     <span className="absolute right-2 top-1.5 text-xs text-muted-foreground pointer-events-none">
-                      {splitType === "percentage" ? "%" : ""}
+                      {splitType === "percentage" ? "%" : "₹"}
                     </span>
                   </div>
                 )}

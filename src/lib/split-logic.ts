@@ -49,16 +49,14 @@ export function calculateBalances(people: Person[], expenses: Expense[]): Balanc
 
 /**
  * Simplifies debts to minimize the number of transactions between people.
- * Follows the standard greedy algorithm matching largest debtors with largest creditors.
- * This ensures the minimum possible number of transactions in most scenarios, 
- * behaving exactly like Splitwise's debt simplification.
+ * This is the "Simplified Debt" algorithm used by Splitwise.
+ * It repeatedly matches the person with the largest positive balance with
+ * the person with the largest negative balance.
  */
 export function simplifyDebts(balances: Balance[]): Debt[] {
-  // Use a small epsilon to handle float precision issues
-  const epsilon = 0.001;
+  const epsilon = 0.01; // Minimum currency unit (1 cent/paise)
 
-  // Separate participants into Creditors (>0) and Debtors (<0)
-  // Debtors will have their amounts stored as positive magnitudes for easier calculation
+  // Extract non-zero balances
   let creditors = balances
     .filter(b => b.netAmount > epsilon)
     .map(b => ({ ...b }))
@@ -71,16 +69,14 @@ export function simplifyDebts(balances: Balance[]): Debt[] {
 
   const debts: Debt[] = [];
 
-  // Greedy settlement process: always match the person who owes the most 
-  // with the person who is owed the most.
+  // Greedy matching: largest debtor pays largest creditor
   while (creditors.length > 0 && debtors.length > 0) {
     const creditor = creditors[0];
     const debtor = debtors[0];
 
-    // The payment is the minimum of what is owed vs what is to be received
     const payment = Math.min(creditor.netAmount, debtor.netAmount);
     
-    if (payment > 0.009) { // At least 1 cent
+    if (payment >= epsilon) {
       debts.push({
         from: debtor.personId,
         to: creditor.personId,
@@ -88,12 +84,11 @@ export function simplifyDebts(balances: Balance[]): Debt[] {
       });
     }
 
-    // Update the balances in the local trackers
+    // Update balances
     creditor.netAmount -= payment;
     debtor.netAmount -= payment;
 
-    // Remove if settled, otherwise re-sort to ensure greedy property for next step.
-    // Re-sorting ensures we always pick the current maximums after each partial settlement.
+    // Clean up or re-sort
     if (creditor.netAmount < epsilon) {
       creditors.shift();
     } else {
