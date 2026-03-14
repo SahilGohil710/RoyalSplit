@@ -21,7 +21,7 @@ It helps groups split expenses, track balances, and settle debts with minimal tr
 
 ## Live Demo
 
-(Add your Firebase URL here)
+
 
 ## How It Works
 
