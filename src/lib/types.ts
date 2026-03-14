@@ -28,5 +28,7 @@ export interface Debt {
 
 export interface Balance {
   personId: string;
+  paid: number;
+  share: number;
   netAmount: number; // Total Paid - Total Owed
 }

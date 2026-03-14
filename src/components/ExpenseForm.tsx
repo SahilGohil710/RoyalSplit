@@ -38,7 +38,8 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
 
   useEffect(() => {
     if (open) {
-      setSplits(people.map((p) => ({ personId: p.id, amount: 0 })));
+      // Default to everyone participating with equal amount 1 (for count)
+      setSplits(people.map((p) => ({ personId: p.id, amount: 1 })));
       if (people.length > 0 && !paidBy) setPaidBy(people[0].id);
     }
   }, [open, people, paidBy]);
@@ -48,11 +49,13 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
     const numAmount = parseFloat(amount);
     if (!title || isNaN(numAmount) || !paidBy) return;
 
-    let finalSplits = splits;
-    if (splitType === "equal") {
-      const selectedPeople = splits.filter((s) => s.amount > 0).map(s => s.personId);
-      const participants = selectedPeople.length > 0 ? selectedPeople : people.map(p => p.id);
-      finalSplits = participants.map(id => ({ personId: id, amount: 1 }));
+    // Filter out participants who are not included (amount 0)
+    const finalSplits = splits.filter(s => s.amount > 0);
+    
+    // If equal split, ensure at least one person is selected
+    if (splitType === "equal" && finalSplits.length === 0) {
+      alert("Please select at least one person for the split.");
+      return;
     }
 
     const newExpense: Expense = {
@@ -166,13 +169,11 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
             {people.map((p) => (
               <div key={p.id} className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-2">
-                  {splitType === "equal" && (
-                    <Checkbox 
-                      id={`check-${p.id}`}
-                      checked={splits.find(s => s.personId === p.id)?.amount !== 0}
-                      onCheckedChange={() => toggleEqualParticipant(p.id)}
-                    />
-                  )}
+                  <Checkbox 
+                    id={`check-${p.id}`}
+                    checked={splits.find(s => s.personId === p.id)?.amount !== 0}
+                    onCheckedChange={() => toggleEqualParticipant(p.id)}
+                  />
                   <Label htmlFor={`check-${p.id}`} className="text-sm">{p.name}</Label>
                 </div>
                 {splitType !== "equal" && (
@@ -184,6 +185,7 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
                       value={splits.find(s => s.personId === p.id)?.amount || ""}
                       onChange={(e) => updateSplitAmount(p.id, e.target.value)}
                       className="h-8 text-right pr-6"
+                      disabled={splits.find(s => s.personId === p.id)?.amount === 0}
                     />
                     <span className="absolute right-2 top-1.5 text-xs text-muted-foreground pointer-events-none">
                       {splitType === "percentage" ? "%" : "₹"}

@@ -3,7 +3,7 @@ import { Person, Expense, Debt, Balance } from './types';
 /**
  * Utility to round values to two decimal places to prevent floating point errors.
  */
-const round = (val: number) => Math.round(val * 100) / 100;
+export const round = (val: number) => Math.round(val * 100) / 100;
 
 /**
  * Calculates net balances for all people based on a list of expenses.
@@ -11,47 +11,94 @@ const round = (val: number) => Math.round(val * 100) / 100;
  * This is recalculated from scratch every time.
  */
 export function calculateBalances(people: Person[], expenses: Expense[]): Balance[] {
-  const balances: Record<string, number> = {};
-  people.forEach(p => balances[p.id] = 0);
+  const balances: Record<string, { paid: number; share: number }> = {};
+  people.forEach(p => balances[p.id] = { paid: 0, share: 0 });
 
   expenses.forEach(expense => {
-    // The person who paid gets a credit
-    balances[expense.paidBy] += expense.amount;
+    // The person who paid gets a credit for the full amount
+    if (balances[expense.paidBy]) {
+      balances[expense.paidBy].paid += expense.amount;
+    }
 
-    // Subtract their share
+    // Calculate shares for participants
     if (expense.splitType === 'equal') {
       const numParticipants = expense.splits.length;
       if (numParticipants > 0) {
         const share = expense.amount / numParticipants;
         expense.splits.forEach(s => {
-          balances[s.personId] -= share;
+          if (balances[s.personId]) {
+            balances[s.personId].share += share;
+          }
         });
       }
     } else if (expense.splitType === 'unequal') {
       expense.splits.forEach(s => {
-        balances[s.personId] -= s.amount;
+        if (balances[s.personId]) {
+          balances[s.personId].share += s.amount;
+        }
       });
     } else if (expense.splitType === 'percentage') {
       expense.splits.forEach(s => {
         const share = (s.amount / 100) * expense.amount;
-        balances[s.personId] -= share;
+        if (balances[s.personId]) {
+          balances[s.personId].share += share;
+        }
       });
     }
   });
 
-  return Object.entries(balances).map(([personId, netAmount]) => ({
+  return Object.entries(balances).map(([personId, data]) => ({
     personId,
-    netAmount: round(netAmount)
+    paid: round(data.paid),
+    share: round(data.share),
+    netAmount: round(data.paid - data.share)
   }));
+}
+
+/**
+ * Generates a history of balances after each expense for visualization.
+ */
+export function calculateBalanceHistory(people: Person[], expenses: Expense[]) {
+  if (expenses.length === 0) return [];
+  
+  // Sort expenses by date (oldest first) for the timeline
+  const sortedExpenses = [...expenses].sort((a, b) => a.date - b.date);
+  
+  const history = [];
+  
+  // Start point (0 for everyone)
+  const start: any = { name: 'Initial' };
+  people.forEach(p => start[p.name] = 0);
+  history.push(start);
+
+  for (let i = 0; i < sortedExpenses.length; i++) {
+    const expensesToDate = sortedExpenses.slice(0, i + 1);
+    const balances = calculateBalances(people, expensesToDate);
+    
+    const snapshot: any = { 
+      name: sortedExpenses[i].title,
+      timestamp: sortedExpenses[i].date 
+    };
+    
+    balances.forEach(b => {
+      const person = people.find(p => p.id === b.personId);
+      if (person) {
+        snapshot[person.name] = b.netAmount;
+      }
+    });
+    
+    history.push(snapshot);
+  }
+  
+  return history;
 }
 
 /**
  * Calculates direct debts (Simplified Debt OFF).
  * For each expense, every participant (except the payer) owes the payer their share.
- * These debts are accumulated and then 1-to-1 netted (if A owes B and B owes A).
  */
 export function calculateDirectDebts(people: Person[], expenses: Expense[]): Debt[] {
-  const pairDebts: Record<string, number> = {}; // key: "id1-id2" where id1 < id2
+  const pairDebts: Record<string, number> = {}; 
 
   expenses.forEach(expense => {
     const payerId = expense.paidBy;
@@ -70,11 +117,8 @@ export function calculateDirectDebts(people: Person[], expenses: Expense[]): Deb
         share = (s.amount / 100) * expense.amount;
       }
 
-      // Record debt: participant -> payer
-      // We use a stable key and positive/negative values to net them automatically
       const [idA, idB] = [s.personId, payerId].sort();
       const key = `${idA}-${idB}`;
-      // If s.personId is idA, he owes idB (positive). If s.personId is idB, he owes idA (negative).
       const direction = s.personId === idA ? 1 : -1;
       pairDebts[key] = (pairDebts[key] || 0) + (share * direction);
     });
@@ -97,10 +141,9 @@ export function calculateDirectDebts(people: Person[], expenses: Expense[]): Deb
 
 /**
  * Simplifies debts to minimize the number of transactions (Simplified Debt ON).
- * Follows the Greedy matching algorithm: largest debtor pays largest creditor.
+ * Greedy matching: largest debtor pays largest creditor.
  */
 export function simplifyDebts(balances: Balance[]): Debt[] {
-  // Separate into creditors and debtors
   let creditors = balances
     .filter(b => b.netAmount > 0.01)
     .map(b => ({ ...b }))
@@ -130,7 +173,6 @@ export function simplifyDebts(balances: Balance[]): Debt[] {
     creditor.netAmount = round(creditor.netAmount - payment);
     debtor.netAmount = round(debtor.netAmount - payment);
 
-    // Remove if settled, otherwise re-sort to keep matching the largest
     if (creditor.netAmount <= 0.01) {
       creditors.shift();
     } else {
