@@ -96,23 +96,23 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-headline flex items-center gap-2">
-          <Plus className="w-4 h-4" /> Add Expense
+          <Plus className="w-4 h-4" /> Add Transaction
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] border-primary/20 bg-card">
         <DialogHeader>
           <DialogTitle className="text-2xl font-headline text-accent flex items-center gap-2">
-            <Crown className="w-6 h-6" /> Record Transaction
+            <Crown className="w-6 h-6" /> Royal Entry
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-muted-foreground">What was this for?</Label>
+            <Label htmlFor="title" className="text-muted-foreground">Description</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Dinner, Groceries, Flight..."
+              placeholder="Ex: Dinner, Flight, Palace Rent..."
               className="bg-background border-border focus:ring-accent"
               required
             />
@@ -196,7 +196,7 @@ export function ExpenseForm({ people, onAddExpense }: ExpenseFormProps) {
 
           <DialogFooter>
             <Button type="submit" className="w-full bg-accent hover:bg-accent/80 text-accent-foreground font-bold">
-              Finalize Expense
+              Confirm Transaction
             </Button>
           </DialogFooter>
         </form>

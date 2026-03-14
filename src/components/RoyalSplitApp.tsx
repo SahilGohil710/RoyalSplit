@@ -18,7 +18,8 @@ import {
   Trash2, 
   CreditCard,
   CheckCircle2,
-  Settings2
+  TrendingDown,
+  ArrowRight
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -53,6 +54,7 @@ export default function RoyalSplitApp() {
     setExpenses(expenses.filter((e) => e.id !== id));
   };
 
+  // Always recalculated from scratch
   const balances = useMemo(() => calculateBalances(people, expenses), [people, expenses]);
   
   const debts = useMemo(() => {
@@ -66,7 +68,7 @@ export default function RoyalSplitApp() {
   const settleDebt = (debt: Debt) => {
     const settlementExpense: Expense = {
       id: `settle-${Date.now()}`,
-      title: `Settlement: ${getPersonName(debt.from)} to ${getPersonName(debt.to)}`,
+      title: `Settlement Payment`,
       amount: debt.amount,
       paidBy: debt.from,
       splitType: 'unequal',
@@ -87,14 +89,14 @@ export default function RoyalSplitApp() {
           </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-headline text-accent">RoyalSplit</h1>
-            <p className="text-muted-foreground text-sm tracking-widest uppercase">Simplified Debt Sovereignty</p>
+            <p className="text-muted-foreground text-sm tracking-widest uppercase">Premium Expense Sovereignty</p>
           </div>
         </div>
         
         <div className="flex gap-3 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Input 
-              placeholder="Add Participant Name..." 
+              placeholder="Add Royal Member..." 
               value={newPersonName}
               onChange={(e) => setNewPersonName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addPerson()}
@@ -120,14 +122,14 @@ export default function RoyalSplitApp() {
           <Card className="shadow-xl border-primary/10 overflow-hidden">
             <CardHeader className="bg-primary/5 pb-4">
               <CardTitle className="text-xl font-headline flex items-center gap-2">
-                <Users className="w-5 h-5 text-accent" /> Court Members
+                <Users className="w-5 h-5 text-accent" /> Royal Ledger
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4 px-2">
               <ScrollArea className="h-[300px] px-4">
                 {people.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p>No members in your court yet.</p>
+                    <p>Invite members to your court.</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -180,17 +182,19 @@ export default function RoyalSplitApp() {
               <div className="space-y-4">
                 {debts.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground flex flex-col items-center gap-2">
-                    <CheckCircle2 className="w-8 h-8 opacity-20" />
-                    <p className="text-sm italic">All debts are settled across the realm.</p>
+                    <CheckCircle2 className="w-8 h-8 text-accent opacity-40" />
+                    <p className="text-sm italic">The realm is fully settled.</p>
                   </div>
                 ) : (
                   debts.map((debt, idx) => (
                     <div key={idx} className="flex flex-col gap-2 p-4 rounded-xl bg-primary/5 border border-primary/10">
                       <div className="flex flex-col gap-1">
-                        <p className="text-sm">
-                          <span className="font-bold text-foreground">{getPersonName(debt.from)}</span> <span className="text-muted-foreground">owes</span> <span className="font-bold text-foreground">{getPersonName(debt.to)}</span>
+                        <p className="text-sm leading-relaxed">
+                          <span className="font-bold text-foreground">{getPersonName(debt.from)}</span> 
+                          <span className="text-muted-foreground mx-1">owes</span> 
+                          <span className="font-bold text-foreground">{getPersonName(debt.to)}</span>
                         </p>
-                        <div className="flex justify-between items-center mt-1">
+                        <div className="flex justify-between items-center mt-2">
                           <span className="text-2xl font-headline text-accent">₹{debt.amount.toFixed(2)}</span>
                           <Button 
                             size="sm" 
@@ -198,7 +202,7 @@ export default function RoyalSplitApp() {
                             onClick={() => settleDebt(debt)}
                             className="text-xs bg-accent text-accent-foreground hover:bg-accent/80 font-bold"
                           >
-                            Settle Now
+                            Settle
                           </Button>
                         </div>
                       </div>
@@ -222,7 +226,7 @@ export default function RoyalSplitApp() {
                 {expenses.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-32 text-muted-foreground opacity-50 space-y-4">
                     <CreditCard className="w-16 h-16" />
-                    <p className="font-headline text-lg">Your ledger is empty.</p>
+                    <p className="font-headline text-lg">Your ledger is currently empty.</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border/50">
@@ -234,7 +238,9 @@ export default function RoyalSplitApp() {
                             <span className="text-xl font-headline">{new Date(expense.date).getDate()}</span>
                           </div>
                           <div>
-                            <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">{expense.title}</h3>
+                            <h3 className="font-bold text-lg leading-tight group-hover:text-accent transition-colors">
+                              {expense.title}
+                            </h3>
                             <p className="text-sm text-muted-foreground mt-1">
                               Paid by <span className="text-foreground font-medium">{getPersonName(expense.paidBy)}</span>
                             </p>
@@ -267,7 +273,7 @@ export default function RoyalSplitApp() {
 
       <footer className="mt-20 py-8 text-center text-muted-foreground/40 text-sm">
         <Separator className="mb-6 opacity-10" />
-        <p>&copy; {new Date().getFullYear()} RoyalSplit Ledger &bull; Simplified Debt Sovereignty &bull; In-Memory Persistence</p>
+        <p>&copy; {new Date().getFullYear()} RoyalSplit &bull; Premium Expense Sovereignty &bull; Accurate Greedy Settlement</p>
       </footer>
     </div>
   );
