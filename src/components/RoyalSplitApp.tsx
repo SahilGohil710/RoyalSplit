@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Person, Expense, Debt, Balance } from "@/lib/types";
-import { calculateBalances, simplifyDebts } from "@/lib/split-logic";
+import { calculateBalances, simplifyDebts, calculateDirectDebts } from "@/lib/split-logic";
 import { ExpenseForm } from "./ExpenseForm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,14 +17,18 @@ import {
   UserPlus, 
   Trash2, 
   CreditCard,
-  CheckCircle2
+  CheckCircle2,
+  Settings2
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export default function RoyalSplitApp() {
   const [people, setPeople] = useState<Person[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newPersonName, setNewPersonName] = useState("");
+  const [isSimplified, setIsSimplified] = useState(true);
 
   const addPerson = () => {
     if (!newPersonName.trim()) return;
@@ -50,7 +54,14 @@ export default function RoyalSplitApp() {
   };
 
   const balances = useMemo(() => calculateBalances(people, expenses), [people, expenses]);
-  const debts = useMemo(() => simplifyDebts(balances), [balances]);
+  
+  const debts = useMemo(() => {
+    if (isSimplified) {
+      return simplifyDebts(balances);
+    } else {
+      return calculateDirectDebts(people, expenses);
+    }
+  }, [isSimplified, balances, people, expenses]);
 
   const settleDebt = (debt: Debt) => {
     const settlementExpense: Expense = {
@@ -148,12 +159,24 @@ export default function RoyalSplitApp() {
           </Card>
 
           <Card className="shadow-xl border-accent/10">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl font-headline flex items-center gap-2">
-                <ArrowRightLeft className="w-5 h-5 text-accent" /> Debt Settlements
-              </CardTitle>
+            <CardHeader className="pb-4 border-b border-border/50">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl font-headline flex items-center gap-2">
+                  <ArrowRightLeft className="w-5 h-5 text-accent" /> Settlement
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Switch 
+                    id="simplified-debt" 
+                    checked={isSimplified} 
+                    onCheckedChange={setIsSimplified}
+                  />
+                  <Label htmlFor="simplified-debt" className="text-[10px] uppercase tracking-tighter cursor-pointer text-muted-foreground">
+                    Simplified
+                  </Label>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-4">
               <div className="space-y-4">
                 {debts.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground flex flex-col items-center gap-2">
@@ -165,7 +188,7 @@ export default function RoyalSplitApp() {
                     <div key={idx} className="flex flex-col gap-2 p-4 rounded-xl bg-primary/5 border border-primary/10">
                       <div className="flex flex-col gap-1">
                         <p className="text-sm">
-                          <span className="font-bold">{getPersonName(debt.from)}</span> owes <span className="font-bold">{getPersonName(debt.to)}</span>
+                          <span className="font-bold text-foreground">{getPersonName(debt.from)}</span> <span className="text-muted-foreground">owes</span> <span className="font-bold text-foreground">{getPersonName(debt.to)}</span>
                         </p>
                         <div className="flex justify-between items-center mt-1">
                           <span className="text-2xl font-headline text-accent">₹{debt.amount.toFixed(2)}</span>
@@ -173,7 +196,7 @@ export default function RoyalSplitApp() {
                             size="sm" 
                             variant="secondary"
                             onClick={() => settleDebt(debt)}
-                            className="text-xs bg-accent text-accent-foreground hover:bg-accent/80"
+                            className="text-xs bg-accent text-accent-foreground hover:bg-accent/80 font-bold"
                           >
                             Settle Now
                           </Button>
@@ -244,7 +267,7 @@ export default function RoyalSplitApp() {
 
       <footer className="mt-20 py-8 text-center text-muted-foreground/40 text-sm">
         <Separator className="mb-6 opacity-10" />
-        <p>&copy; {new Date().getFullYear()} RoyalSplit Ledger &bull; Simplified Debt Enabled &bull; No Persistence</p>
+        <p>&copy; {new Date().getFullYear()} RoyalSplit Ledger &bull; Simplified Debt Sovereignty &bull; In-Memory Persistence</p>
       </footer>
     </div>
   );

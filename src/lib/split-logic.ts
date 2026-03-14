@@ -48,15 +48,61 @@ export function calculateBalances(people: Person[], expenses: Expense[]): Balanc
 }
 
 /**
- * Simplifies debts to minimize the number of transactions between people.
- * This is the "Simplified Debt" algorithm used by Splitwise.
- * It repeatedly matches the person with the largest positive balance with
- * the person with the largest negative balance.
+ * Calculates direct debts (Simplified Debt OFF).
+ * For each expense, creates a record of what each participant owes the payer.
+ * Consolidates debts between the same pair of people.
+ */
+export function calculateDirectDebts(people: Person[], expenses: Expense[]): Debt[] {
+  const debtMap: Record<string, number> = {}; // key format: "fromId-toId"
+
+  expenses.forEach(expense => {
+    const payerId = expense.paidBy;
+    
+    if (expense.splitType === 'equal') {
+      const numParticipants = expense.splits.length;
+      if (numParticipants === 0) return;
+      
+      const totalCents = Math.round(expense.amount * 100);
+      const shareCents = Math.floor(totalCents / numParticipants);
+      const remainderCents = totalCents % numParticipants;
+
+      expense.splits.forEach((s, index) => {
+        if (s.personId === payerId) return;
+        const amountCents = shareCents + (index < remainderCents ? 1 : 0);
+        const key = `${s.personId}-${payerId}`;
+        debtMap[key] = (debtMap[key] || 0) + (amountCents / 100);
+      });
+    } else if (expense.splitType === 'unequal') {
+      expense.splits.forEach(s => {
+        if (s.personId === payerId) return;
+        const key = `${s.personId}-${payerId}`;
+        debtMap[key] = (debtMap[key] || 0) + s.amount;
+      });
+    } else if (expense.splitType === 'percentage') {
+      expense.splits.forEach(s => {
+        if (s.personId === payerId) return;
+        const share = Math.round((s.amount / 100) * expense.amount * 100) / 100;
+        const key = `${s.personId}-${payerId}`;
+        debtMap[key] = (debtMap[key] || 0) + share;
+      });
+    }
+  });
+
+  return Object.entries(debtMap)
+    .filter(([_, amount]) => amount >= 0.01)
+    .map(([key, amount]) => {
+      const [from, to] = key.split('-');
+      return { from, to, amount: Math.round(amount * 100) / 100 };
+    });
+}
+
+/**
+ * Simplifies debts to minimize the number of transactions between people (Simplified Debt ON).
+ * Greedy matching: largest debtor pays largest creditor.
  */
 export function simplifyDebts(balances: Balance[]): Debt[] {
-  const epsilon = 0.01; // Minimum currency unit (1 cent/paise)
+  const epsilon = 0.01;
 
-  // Extract non-zero balances
   let creditors = balances
     .filter(b => b.netAmount > epsilon)
     .map(b => ({ ...b }))
@@ -69,7 +115,6 @@ export function simplifyDebts(balances: Balance[]): Debt[] {
 
   const debts: Debt[] = [];
 
-  // Greedy matching: largest debtor pays largest creditor
   while (creditors.length > 0 && debtors.length > 0) {
     const creditor = creditors[0];
     const debtor = debtors[0];
@@ -84,11 +129,9 @@ export function simplifyDebts(balances: Balance[]): Debt[] {
       });
     }
 
-    // Update balances
     creditor.netAmount -= payment;
     debtor.netAmount -= payment;
 
-    // Clean up or re-sort
     if (creditor.netAmount < epsilon) {
       creditors.shift();
     } else {
