@@ -20,7 +20,7 @@ It helps groups split expenses, track balances, and settle debts with minimal tr
 - Firebase Hosting
 
 ## Live Demo
-
+https://studio--studio-7692894368-ec9b9.us-central1.hosted.app/
 
 
 ## How It Works
